@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Favicon Icon -->
+  <link rel="icon" href="img/favicon-16x16.png" type="image/png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minesweeper</title>
+  <style>
+    /* MUJI-Inspired Design System */
+    :root {
+      --bg-primary: #fafafa;
+      --bg-secondary: #f5f5f5;
+      --text-primary: #2b1e1a; /* deep espresso brown */
+      --text-secondary: #5a4942; /* soft brown-gray */
+      --border-color: #e0e0e0;
+      --accent-color: #3498db;
+      --danger-color: #e74c3c;
+    }
+    /* Basic body layout */
+    body {
+      background-color: var(--bg-primary);
+      background-image: url('img/paper.jpeg');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      padding: 20px;
+      color: var(--text-primary);
+      transition: background-color 0.3s ease;
+    }
+    .glass-panel {
+      text-align: left;
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(0.5px);
+      padding: 1rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      width: 90vw;
+      max-width: 400px;
+      margin: auto;
+    }
+    h1 {
+      font-weight: 300;
+      font-size: 2.3rem;
+      margin-bottom: 0.5rem;
+      color: var(--text-secondary);
+      letter-spacing: -0.5px;
+    }
+    canvas {
+      width: 90vw;
+      max-width: 400px;
+      height: auto;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+      background: linear-gradient(135deg, var(--bg-secondary), var(--bg-primary));
+      transition: all 0.3s ease;
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    canvas:hover {
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+    }
+    #instructions {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.3rem;
+      opacity: 0.8;
+    }
+    #timerDisplay {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+    /* Controls toggles */
+    #keyboardToggle,
+    #soundToggle {
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+    }
+    /* Keyboard Controls Info */
+    #controlsInfo {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    #controlsInfo ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .canvas-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(2px);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+      border-radius: 8px;
+      z-index: 2;
+    }
+    .canvas-overlay.active {
+      opacity: 1;
+    }
+    .end-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 3;
+    }
+    .end-overlay.active {
+      display: flex;
+    }
+    /* End-message: center text and button */
+    .end-message {
+      background-color: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(4px);
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+      transform: scale(0.8);
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      opacity: 0;
+      text-align: center;
+    }
+    .end-overlay.active .end-message {
+      transform: scale(1);
+      opacity: 1;
+    }
+    .end-message #gameStatus {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.8rem;
+    }
+    .end-message #restartButton {
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 0.7rem 1.3rem;
+      border: 1px solid var(--border-color);
+      font-size: 0.95rem;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+      margin: 0 auto;
+      display: block;
+    }
+    .end-message #restartButton:hover {
+      background-color: rgba(255, 255, 255, 1);
+      border-color: var(--text-secondary);
+    }
+    .glass-tint {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      backdrop-filter: blur(0.5px);
+      background-color: rgba(255, 255, 255, 0.15);
+      z-index: 0;
+    }
+    /* Condensed Attribution Footer */
+    .attribution {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      text-align: left;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .attribution p {
+      margin: 0.2rem 0;
+    }
+    .attribution a {
+      color: var(--accent-color);
+      text-decoration: none;
+    }
+    .attribution a:hover {
+      text-decoration: underline;
+    }
+    .selector {
+      stroke: #FF0000;
+      stroke-width: 3;
+    }
+  </style>
+</head>
+<body>
+  <div class="glass-tint"></div>
+  <div class="glass-panel">
+    <h1>Minesweeper</h1>
+    <p id="instructions">
+      <span title="Left-click or tap to reveal. Right-click or long press to flag mines.">❓</span>
+      Left-click: Reveal | Right-click: Flag | by Zoe Thompson
+    </p>
+    <p id="timerDisplay">Time: 0 s</p>
+    <!-- Keyboard Controls Toggle (default OFF) -->
+    <div id="keyboardToggle">
+      <label>
+        <input type="checkbox" id="toggleKeyboard"> Enable Keyboard Controls
+      </label>
+    </div>
+    <!-- Background Music Toggle (default ON) -->
+    <div id="soundToggle">
+      <label>
+        <input type="checkbox" id="toggleSound" checked> Background Music
+      </label>
+    </div>
+    <!-- Keyboard Controls Info (initially hidden) -->
+    <div id="controlsInfo" style="display: none;">
+      <strong>Keyboard Controls:</strong>
+      <ul>
+        <li>Arrow Keys: Move selector</li>
+        <li>Enter: Reveal selected cell</li>
+        <li>F: Flag/unflag selected cell</li>
+      </ul>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div id="canvasOverlay" class="canvas-overlay"></div>
+    <div id="endOverlay" class="end-overlay">
+      <div class="end-message">
+        <div id="gameStatus"></div>
+        <button id="restartButton" onclick="restartGame()">↻ Restart</button>
+      </div>
+    </div>
+    <!-- Condensed Attribution Footer with Background Image Citation -->
+    <div class="attribution">
+      <p>
+        Sound Effects: Click by <a href="https://pixabay.com/users/soundreality-31074404/?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=music&amp;utm_content=233951" target="_blank">Jurij</a>; Win by <a href="https://pixabay.com/users/universfield-28281460/?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=music&amp;utm_content=229206" target="_blank">Universfield</a>; Bomb/lose by <a href="https://pixabay.com/users/freesound_community-46691455/?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=music&amp;utm_content=40472" target="_blank">freesound_community</a>; Flag by <a href="https://pixabay.com/users/liecio-3298866/?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=music&amp;utm_content=132273" target="_blank">LIECIO</a>.
+      </p>
+      <p>
+        Background Music: <a href="https://pixabay.com/users/music_for_video-22579021/?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=music&amp;utm_content=125566" target="_blank">music_for_video</a> from <a href="https://pixabay.com/?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=music&amp;utm_content=125566" target="_blank">Pixabay</a>.
+      </p>
+      <p>
+        Background Image: Natural Japanese recycled paper texture. Banner background by <a href="https://stock.adobe.com/search?k=japanese&amp;ef_id=CjwKCAjw--K_BhB5EiwAuwYoykxGL_FLTEgoxWuHJtNyFyhLM9sx5QMRuBsBKvq5CZS4-aB0ULfnTBoCPQIQAvD_BwE%3AG%3As&amp;s_kwcid=AL!3085!3!728612626771!!!g!!!2089170876!84594855331&amp;as_channel=sem&amp;as_campclass=nonbrand&amp;as_campaign=US%7CCPRO%7CStock%7CPURCH%7CDSA_Website_pages%7CGG%7C%7C&amp;as_source=google&amp;as_camptype=acquisition&amp;sdid=LZ32SSQD&amp;mv=search&amp;mv2=paidsearch&amp;as_audience=core&amp;gad_source=1&amp;asset_id=340857072" target="_blank">daboost</a>, licensed by Adobe Images.
+      </p>
+    </div>
+  </div>
+  <script>
+    /*
+GAME DESIGN & LOGIC STEPS:
+- The game board is a 10x10 grid.
+- Ten hidden mines are randomly placed.
+- Clicking a cell reveals what’s underneath:
+    - If it's a mine: game over.
+    - If it's a number: shows how many mines are around it.
+    - If it's blank (zero adjacent mines): auto-reveal nearby cells.
+- Right-click (or long tap on mobile) to flag suspected mines.
+- Win when all safe cells are revealed.
+- Keyboard Controls (when enabled):
+    - Arrow keys to move the selector.
+    - Enter to reveal the selected cell.
+    - F to flag/unflag the selected cell.
+    
+CHATGPT CONSULTATION:
+- Brainstormed aesthetic and mechanics.
+- Helped troubleshoot gameplay loop, display/UI layering, mobile accessibility, audio-visual enhancements,
+  helped integrate keyboard navigation with a toggle, and troubleshoot responsive canvas scaling.
+    */
+    
+    // Load sound effects
+    const clickSound = new Audio('audio/click.mp3');
+    const winSound = new Audio('audio/win.mp3');
+    const explodeSound = new Audio('audio/explosion.mp3');
+    const flagSound = new Audio('audio/bling.mp3');
+    
+    // Create background music audio (looped)
+    const bgMusic = new Audio('audio/soundtrack.mp3');
+    bgMusic.loop = true;
+    
+    // Get DOM elements
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const statusDiv = document.querySelector('.end-message #gameStatus');
+    const restartButton = document.querySelector('.end-message #restartButton');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const keyboardToggle = document.getElementById('toggleKeyboard');
+    const controlsInfo = document.getElementById('controlsInfo');
+    const toggleSound = document.getElementById('toggleSound');
+    
+    // Initial grid configuration
+    let rows = 10;
+    let cols = 10;
+    let totalMines = 10;
+    let cellSize = 400 / cols; // initial value; will update via resizeCanvas()
+    let grid = [];
+    let gameOver = false;
+    let cellsRevealed = 0;
+    
+    // Keyboard navigation variables (start with keyboard disabled)
+    let selectedRow = 0;
+    let selectedCol = 0;
+    let keyboardEnabled = false;
+    
+    // Timer variables
+    let startTime = 0;
+    let timerInterval;
+    
+    // Update keyboard controls based on toggle
+    keyboardToggle.addEventListener('change', (e) => {
+      keyboardEnabled = e.target.checked;
+      controlsInfo.style.display = keyboardEnabled ? "block" : "none";
+      drawGrid();
+    });
+    
+    // Background music toggle
+    toggleSound.addEventListener('change', (e) => {
+      if(e.target.checked) {
+        bgMusic.play().catch(err => console.log("Music play blocked:", err));
+      } else {
+        bgMusic.pause();
+      }
+    });
+    if(toggleSound.checked) {
+      bgMusic.play().catch(err => console.log("Music play blocked:", err));
+    }
+    
+    // Ensure background music starts after a user interaction (required by many browsers)
+    let musicStarted = false;
+    document.body.addEventListener('click', () => {
+      if (!musicStarted && toggleSound.checked) {
+        bgMusic.play().then(() => {
+          musicStarted = true;
+        }).catch(error => {
+          console.warn("Background music playback blocked by browser:", error);
+        });
+      }
+    }, { once: true });
+    
+    // Responsive canvas resizing: restrict maximum size to 400px
+    function resizeCanvas() {
+      const newSize = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.9, 400);
+      canvas.width = newSize;
+      canvas.height = newSize;
+      canvas.style.width = newSize + "px";
+      canvas.style.height = newSize + "px";
+      cellSize = canvas.width / cols;
+      drawGrid();
+    }
+    window.addEventListener('resize', resizeCanvas);
+    
+    // Initialize grid, place mines, and reset timer and selection
+    function initGrid() {
+      grid = [];
+      cellsRevealed = 0;
+      gameOver = false;
+      statusDiv.textContent = '';
+      selectedRow = 0;
+      selectedCol = 0;
+      clearInterval(timerInterval);
+      startTime = 0;
+      timerDisplay.textContent = "Time: 0 s";
+      
+      document.getElementById('endOverlay').classList.remove('active');
+      document.getElementById('canvasOverlay').classList.remove('active');
+      
+      for (let r = 0; r < rows; r++) {
+        let rowArray = [];
+        for (let c = 0; c < cols; c++) {
+          rowArray.push({
+            row: r,
+            col: c,
+            isMine: false,
+            isRevealed: false,
+            isFlagged: false,
+            adjacentMines: 0
+          });
+        }
+        grid.push(rowArray);
+      }
+      
+      let minesPlaced = 0;
+      while (minesPlaced < totalMines) {
+        let r = Math.floor(Math.random() * rows);
+        let c = Math.floor(Math.random() * cols);
+        if (!grid[r][c].isMine) {
+          grid[r][c].isMine = true;
+          minesPlaced++;
+        }
+      }
+      
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (!grid[r][c].isMine) {
+            let count = 0;
+            for (let dr = -1; dr <= 1; dr++) {
+              for (let dc = -1; dc <= 1; dc++) {
+                let nr = r + dr;
+                let nc = c + dc;
+                if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc].isMine) {
+                  count++;
+                }
+              }
+            }
+            grid[r][c].adjacentMines = count;
+          }
+        }
+      }
+      
+      drawGrid();
+      resizeCanvas();
+    }
+    
+    // Start timer on first cell reveal
+    function startTimer() {
+      if (startTime === 0) {
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          timerDisplay.textContent = "Time: " + elapsed + " s";
+        }, 1000);
+      }
+    }
+    
+    // Drawing functions
+    function drawGrid() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          drawCell(grid[r][c]);
+        }
+      }
+      if (!gameOver && keyboardEnabled) {
+        drawSelector();
+      }
+    }
+    
+    function drawCell(cell) {
+      const x = cell.col * cellSize;
+      const y = cell.row * cellSize;
+      let gradient = ctx.createLinearGradient(x, y, x + cellSize, y + cellSize);
+      gradient.addColorStop(0, cell.isRevealed ? '#f5f5f5' : '#ffffff');
+      gradient.addColorStop(1, cell.isRevealed ? '#fafafa' : '#ffffff');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x, y, cellSize, cellSize);
+      
+      ctx.strokeStyle = '#e0e0e0';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 0.5, y + 0.5, cellSize - 1, cellSize - 1);
+      
+      if (cell.isRevealed) {
+        if (cell.isMine) {
+          ctx.fillStyle = '#e74c3c';
+          ctx.beginPath();
+          ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize / 4, 0, 2 * Math.PI);
+          ctx.fill();
+        } else if (cell.adjacentMines > 0) {
+          const numColors = {
+            1: '#3498db',
+            2: '#2ecc71',
+            3: '#e74c3c',
+            4: '#9b59b6',
+            5: '#f39c12',
+            6: '#1abc9c',
+            7: '#34495e',
+            8: '#7f8c8d'
+          };
+          ctx.fillStyle = numColors[cell.adjacentMines] || '#333333';
+          ctx.font = `${cellSize * 0.5}px 'Helvetica Neue', Arial, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(cell.adjacentMines, x + cellSize / 2, y + cellSize / 2);
+        }
+      } else if (cell.isFlagged) {
+        ctx.fillStyle = '#3498db';
+        ctx.font = `${cellSize * 0.6}px 'Helvetica Neue', Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⚑', x + cellSize / 2, y + cellSize / 2);
+      }
+    }
+    
+    function drawSelector() {
+      const x = selectedCol * cellSize;
+      const y = selectedRow * cellSize;
+      ctx.strokeStyle = '#FF0000';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+    }
+    
+    // Game logic functions
+    function revealCell(cell) {
+      if (cell.isRevealed || cell.isFlagged) return;
+      startTimer();
+      cell.isRevealed = true;
+      cellsRevealed++;
+      if (!cell.isMine) {
+        clickSound.play();
+      }
+      if (cell.isMine) {
+        explodeSound.play();
+        gameOver = true;
+        statusDiv.textContent = '💥 Game Over';
+        document.getElementById('endOverlay').classList.add('active');
+        clearInterval(timerInterval);
+        revealAllMines();
+        document.getElementById('canvasOverlay').classList.add('active');
+        drawGrid();
+        return;
+      }
+      if (cell.adjacentMines === 0) {
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            let nr = cell.row + dr;
+            let nc = cell.col + dc;
+            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !grid[nr][nc].isRevealed) {
+              revealCell(grid[nr][nc]);
+            }
+          }
+        }
+      }
+      drawGrid();
+    }
+    
+    function revealAllMines() {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (grid[r][c].isMine) {
+            grid[r][c].isRevealed = true;
+          }
+        }
+      }
+    }
+    
+    function checkWin() {
+      if (cellsRevealed === rows * cols - totalMines) {
+        winSound.play();
+        gameOver = true;
+        statusDiv.textContent = '🎉 You Win!';
+        document.getElementById('endOverlay').classList.add('active');
+        document.getElementById('canvasOverlay').classList.add('active');
+        clearInterval(timerInterval);
+      }
+    }
+    
+    // Mouse event listeners
+    canvas.addEventListener('click', (e) => {
+      if (gameOver) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const col = Math.floor(x / cellSize);
+      const row = Math.floor(y / cellSize);
+      if (row >= 0 && row < rows && col >= 0 && col < cols) {
+        revealCell(grid[row][col]);
+        checkWin();
+        selectedRow = row;
+        selectedCol = col;
+      }
+    });
+    
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (gameOver) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const col = Math.floor(x / cellSize);
+      const row = Math.floor(y / cellSize);
+      if (row >= 0 && row < rows && col >= 0 && col < cols) {
+        let cell = grid[row][col];
+        if (!cell.isRevealed) {
+          cell.isFlagged = !cell.isFlagged;
+          if (cell.isFlagged) {
+            flagSound.play();
+          }
+          drawGrid();
+          selectedRow = row;
+          selectedCol = col;
+        }
+      }
+    });
+    
+    // Keyboard controls
+    window.addEventListener('keydown', (e) => {
+      if (gameOver) return;
+      if (!keyboardEnabled) return;
+      switch (e.code) {
+        case "ArrowUp":
+          selectedRow = Math.max(0, selectedRow - 1);
+          e.preventDefault();
+          break;
+        case "ArrowDown":
+          selectedRow = Math.min(rows - 1, selectedRow + 1);
+          e.preventDefault();
+          break;
+        case "ArrowLeft":
+          selectedCol = Math.max(0, selectedCol - 1);
+          e.preventDefault();
+          break;
+        case "ArrowRight":
+          selectedCol = Math.min(cols - 1, selectedCol + 1);
+          e.preventDefault();
+          break;
+        case "Enter":
+          revealCell(grid[selectedRow][selectedCol]);
+          checkWin();
+          break;
+        case "KeyF":
+          if (!grid[selectedRow][selectedCol].isRevealed) {
+            grid[selectedRow][selectedCol].isFlagged = !grid[selectedRow][selectedCol].isFlagged;
+            if (grid[selectedRow][selectedCol].isFlagged) {
+              flagSound.play();
+            }
+            drawGrid();
+          }
+          break;
+      }
+      drawGrid();
+    });
+    
+    // Mobile long-press support for flagging
+    let touchTimer;
+    canvas.addEventListener('touchstart', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches[0];
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      const col = Math.floor(x / cellSize);
+      const row = Math.floor(y / cellSize);
+      touchTimer = setTimeout(() => {
+        if (!gameOver && grid[row][col] && !grid[row][col].isRevealed) {
+          grid[row][col].isFlagged = !grid[row][col].isFlagged;
+          if (grid[row][col].isFlagged) {
+            flagSound.play();
+          }
+          drawGrid();
+          selectedRow = row;
+          selectedCol = col;
+        }
+      }, 500);
+    });
+    
+    canvas.addEventListener('touchend', () => {
+      clearTimeout(touchTimer);
+    });
+    
+    // Restart function with fade effect
+    function restartGame() {
+      document.getElementById('canvasOverlay').classList.remove('active');
+      document.getElementById('endOverlay').classList.remove('active');
+      canvas.style.opacity = 0;
+      clearInterval(timerInterval);
+      setTimeout(() => {
+        initGrid();
+        canvas.style.opacity = 1;
+      }, 300);
+    }
+    
+    // Initialize game on page load
+    initGrid();
+  </script>
+</body>
+</html>
